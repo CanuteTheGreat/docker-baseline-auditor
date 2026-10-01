@@ -22,28 +22,47 @@ Checks performed per running container:
   - AppArmor/SecComp explicitly set to "unconfined"
   - capabilities added beyond default (--cap-add)
 
-Exit code is 0 always (informational tool); use --json for machine parsing
-in CI. No data leaves the host -- everything is read via the local Docker
-socket/CLI.
+Exit code is 0 on a normal run (informational tool) and 2 if the `docker`
+CLI is missing or fails to respond (e.g. daemon unreachable) -- the audit
+is skipped rather than silently reporting "0 containers checked". Use
+--json for machine parsing in CI. No data leaves the host -- everything is
+read via the local Docker socket/CLI.
 """
 import json
 import subprocess
 import sys
 
 
+class DockerUnavailableError(Exception):
+    """Raised when the docker CLI can't be run or fails to list containers."""
+
+
 def sh(*args):
-    return subprocess.run(args, capture_output=True, text=True, check=False).stdout
+    try:
+        proc = subprocess.run(args, capture_output=True, text=True, check=False)
+    except FileNotFoundError:
+        raise DockerUnavailableError(
+            "`docker` CLI not found on PATH -- is Docker installed?"
+        )
+    return proc
 
 
 def get_containers():
-    out = sh("docker", "ps", "-q")
-    return [c for c in out.strip().split("\n") if c]
+    proc = sh("docker", "ps", "-q")
+    if proc.returncode != 0:
+        stderr = proc.stderr.strip() or "(no error output)"
+        raise DockerUnavailableError(
+            f"`docker ps` failed (exit {proc.returncode}): {stderr}"
+        )
+    return [c for c in proc.stdout.strip().split("\n") if c]
 
 
 def inspect(cid):
-    out = sh("docker", "inspect", cid)
+    proc = sh("docker", "inspect", cid)
+    if proc.returncode != 0:
+        return {}
     try:
-        return json.loads(out)[0]
+        return json.loads(proc.stdout)[0]
     except Exception:
         return {}
 
@@ -100,7 +119,16 @@ def audit_container(data):
 def main():
     as_json = "--json" in sys.argv
     results = []
-    for cid in get_containers():
+    try:
+        container_ids = get_containers()
+    except DockerUnavailableError as exc:
+        if as_json:
+            print(json.dumps({"error": str(exc)}, indent=2))
+        else:
+            print(f"docker-baseline-auditor: ERROR -- {exc}", file=sys.stderr)
+        sys.exit(2)
+
+    for cid in container_ids:
         data = inspect(cid)
         if data:
             results.append(audit_container(data))
