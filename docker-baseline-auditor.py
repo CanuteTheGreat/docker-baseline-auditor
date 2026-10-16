@@ -115,7 +115,8 @@ def audit_container(data):
         if "unconfined" in opt:
             findings.append(("MEDIUM", f"security profile disabled: {opt}"))
 
-    cap_add = host_config.get("CapAdd") or []
+    # Newer engines report CapAdd as CAP_NET_ADMIN, older ones as NET_ADMIN.
+    cap_add = [c[4:] if c.upper().startswith("CAP_") else c for c in (host_config.get("CapAdd") or [])]
     if cap_add:
         findings.append(("MEDIUM", f"extra capabilities added: {', '.join(cap_add)}"))
 
