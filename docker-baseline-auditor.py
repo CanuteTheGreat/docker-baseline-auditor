@@ -28,6 +28,7 @@ is skipped rather than silently reporting "0 containers checked". Use
 --json for machine parsing in CI. No data leaves the host -- everything is
 read via the local Docker socket/CLI.
 """
+import argparse
 import json
 import subprocess
 import sys
@@ -91,17 +92,22 @@ def audit_container(data):
         if "docker.sock" in src:
             findings.append(("HIGH", f"Docker socket mounted in ({src}) -- effective root-equivalent host access"))
 
-    user = config.get("User") or ""
+    # "User" may be "name", "uid", "name:group" or "uid:gid"; only the user part matters.
+    user = (config.get("User") or "").split(":", 1)[0].strip()
     if user in ("", "0", "root"):
         findings.append(("MEDIUM", "container runs as root (no non-root USER set)"))
 
     if not host_config.get("Memory"):
         findings.append(("LOW", "no memory limit set"))
 
-    if not host_config.get("RestartPolicy", {}).get("Name"):
+    # Docker reports an unset policy as "" on old engines and "no" on current ones.
+    if (host_config.get("RestartPolicy") or {}).get("Name", "") in ("", "no"):
         findings.append(("LOW", "no restart policy set"))
 
-    if image.endswith(":latest") or ":" not in image:
+    # Tag lives after the last "/" (a registry host:port also contains ":");
+    # digest-pinned references (name@sha256:...) are fine.
+    last = image.rsplit("/", 1)[-1]
+    if "@" not in last and (":" not in last or last.endswith(":latest")):
         findings.append(("LOW", "using ':latest' or untagged image (non-reproducible, harder to pin/patch)"))
 
     sec_opts = host_config.get("SecurityOpt") or []
@@ -117,7 +123,14 @@ def audit_container(data):
 
 
 def main():
-    as_json = "--json" in sys.argv
+    parser = argparse.ArgumentParser(
+        prog="docker-baseline-auditor.py",
+        description="Read-only Docker security baseline checker: audits every "
+                    "running container on this host for common misconfigurations.",
+    )
+    parser.add_argument("--json", action="store_true",
+                        help="emit machine-readable JSON instead of the text report")
+    as_json = parser.parse_args().json
     results = []
     try:
         container_ids = get_containers()
