@@ -27,8 +27,8 @@ containers. No network calls, no data leaves the host.
 
 ## License / pricing
 
-MIT — see LICENSE. Free, pay-what-you-want. If it's useful: https://errant.solutions/tools.html
-(payment link on that page). No obligation.
+MIT — see LICENSE. Free, pay-what-you-want. If it's useful, there's a payment link on
+https://errant.solutions. No obligation.
 
 Part of the [Errant Solutions](https://errant.solutions) spare-capacity tools
 series (see also: sshd-hardening-auditor, tls-cert-watchdog,
