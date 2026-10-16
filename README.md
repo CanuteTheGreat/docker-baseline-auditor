@@ -27,7 +27,7 @@ containers. No network calls, no data leaves the host.
 
 ## License / pricing
 
-Free, pay-what-you-want. If it's useful: https://errant.solutions/tools.html
+MIT — see LICENSE. Free, pay-what-you-want. If it's useful: https://errant.solutions/tools.html
 (payment link on that page). No obligation.
 
 Part of the [Errant Solutions](https://errant.solutions) spare-capacity tools
