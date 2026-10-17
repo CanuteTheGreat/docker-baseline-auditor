@@ -23,6 +23,7 @@ import calendar
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -81,43 +82,97 @@ def docker(*args, check=True):
 STALE_AFTER = 30 * 60
 
 
+# Under mutation testing (mutmut sets MUTANT_UNDER_TEST) the corpus and Docker Bench's verdicts are
+# the reference, not the code under test, so they are built once per mutation run and every mutant
+# reuses them (cache file in the mutation container's /tmp, shared by mutmut's forked children); only
+# this tool's audit reruns per mutant. Building them per mutant (18 container starts + a bench run of
+# up to 900 s) made a third of the mutants time out. The corpus is labelled with the mutation
+# container's id (its hostname), runs until that container is gone, and is reaped after that.
+MUTATION_RUN = socket.gethostname() if os.environ.get("MUTANT_UNDER_TEST") else ""
+ORACLE_CACHE = os.path.join(tempfile.gettempdir(), "dba-acc-oracle.json")
+OWNER_LABEL = "dba-acc-mutation-run"
+
+
 def reap_stale_corpora():
     ids = docker("ps", "-aq", "--filter", "name=^dba-acc-", check=False).split()
     if not ids:
         return
     now = time.time()
-    for line in docker("inspect", "--format", "{{.Id}} {{.Created}}", *ids, check=False).splitlines():
-        cid, _, created = line.partition(" ")
+    owners = {}
+    for line in docker("inspect", "--format", "{{.Id}} {{.Created}} {{json .Config.Labels}}", *ids,
+                       check=False).splitlines():
+        cid, created, labels = (line.split(" ", 2) + ["", ""])[:3]
         try:
-            age = now - calendar.timegm(time.strptime(created[:19], "%Y-%m-%dT%H:%M:%S"))
+            owner = (json.loads(labels) or {}).get(OWNER_LABEL, "")
         except ValueError:
-            continue
-        if age > STALE_AFTER:
+            owner = ""
+        if owner:
+            # a mutation run's corpus lives exactly as long as its mutation container runs
+            if owner not in owners:
+                owners[owner] = bool(docker("ps", "-q", "--filter", "id=" + owner, check=False))
+            stale = not owners[owner]
+        else:
+            try:
+                stale = now - calendar.timegm(time.strptime(created[:19], "%Y-%m-%dT%H:%M:%S")) > STALE_AFTER
+            except ValueError:
+                continue
+        if stale:
             docker("rm", "-f", "-v", cid, check=False)
 
 
-def setUpModule():
-    global PREFIX, NAMES, TOOL_IDS, BENCH_IDS, INSPECT, APPARMOR
+def build_oracle():
+    """Start the corpus, inspect it and run Docker Bench over it (sets PREFIX/NAMES/INSPECT/APPARMOR/BENCH_IDS)."""
+    global PREFIX, NAMES, INSPECT, APPARMOR, BENCH_IDS
     PREFIX = "dba-acc-%s" % uuid.uuid4().hex[:8]
     NAMES = {}
     reap_stale_corpora()
     docker("pull", "-q", IMAGE)
+    # a mutation run can outlast 600 s by hours; its corpus is removed by the reaper instead
+    extra, sleep = (["--label", "%s=%s" % (OWNER_LABEL, MUTATION_RUN)], "86400") if MUTATION_RUN else ([], "600")
+    for suffix, opts in CORPUS.items():
+        name = "%s-%s" % (PREFIX, suffix)
+        docker("run", "-d", "--name", name, *(BASE + extra + opts), IMAGE, "sleep", sleep)
+        NAMES[name] = suffix
+    INSPECT = {d["Name"].lstrip("/"): d for d in json.loads(docker("inspect", *NAMES))}
+    APPARMOR = any("apparmor" in o for o in json.loads(docker("info", "--format", "{{json .SecurityOptions}}")))
+    BENCH_IDS = run_bench()
+
+
+def load_or_build_oracle():
+    global PREFIX, NAMES, INSPECT, APPARMOR, BENCH_IDS
+    import fcntl  # mutation testing runs on Linux only
+    with open(ORACLE_CACHE + ".lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if os.path.exists(ORACLE_CACHE):
+            with open(ORACLE_CACHE) as f:
+                c = json.load(f)
+            PREFIX, NAMES, INSPECT, APPARMOR = c["prefix"], c["names"], c["inspect"], c["apparmor"]
+            BENCH_IDS = {n: set(ids) for n, ids in c["bench"].items()}
+            return
+        build_oracle()
+        with open(ORACLE_CACHE + ".tmp", "w") as f:
+            json.dump({"prefix": PREFIX, "names": NAMES, "inspect": INSPECT, "apparmor": APPARMOR,
+                       "bench": {n: sorted(ids) for n, ids in BENCH_IDS.items()}}, f)
+        os.rename(ORACLE_CACHE + ".tmp", ORACLE_CACHE)
+
+
+def setUpModule():
+    global PREFIX, NAMES, TOOL_IDS
+    PREFIX, NAMES = "", {}
     try:
-        for suffix, opts in CORPUS.items():
-            name = "%s-%s" % (PREFIX, suffix)
-            docker("run", "-d", "--name", name, *(BASE + opts), IMAGE, "sleep", "600")
-            NAMES[name] = suffix
-        INSPECT = {d["Name"].lstrip("/"): d for d in json.loads(docker("inspect", *NAMES))}
-        APPARMOR = any("apparmor" in o for o in json.loads(docker("info", "--format", "{{json .SecurityOptions}}")))
+        if MUTATION_RUN:
+            load_or_build_oracle()
+        else:
+            build_oracle()
         p = subprocess.run([sys.executable, TOOL, "--json", "--include", "4.1,5"], stdout=subprocess.PIPE,
                            stderr=subprocess.PIPE, universal_newlines=True, timeout=300)
         assert p.returncode in (0, 1), p.stderr
         TOOL_IDS = {c["name"]: {f["id"] for f in c["findings"]} for c in json.loads(p.stdout)["containers"]
                     if c["name"] in NAMES}
         TOOL_IDS = {n: TOOL_IDS.get(n, set()) for n in NAMES}
-        BENCH_IDS = run_bench()
     except Exception:
-        tearDownModule()
+        if not MUTATION_RUN:
+            tearDownModule()
         raise
 
 
@@ -145,6 +200,8 @@ def run_bench():
 
 
 def tearDownModule():
+    if MUTATION_RUN:
+        return  # the next mutant reuses the corpus; reap_stale_corpora removes it after the run
     for n in list(NAMES):
         docker("rm", "-f", "-v", n, check=False)
 
