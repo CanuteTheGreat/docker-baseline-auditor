@@ -2,7 +2,7 @@
 
 All notable changes. Versions are git tags; each tag has a Forgejo release with checksums.
 
-## Unreleased
+## 1.2.1 - 2026-10-17
 
 - CIS 5.15 now follows the benchmark's audit: a restart policy that restarts without bound (`always`,
   `unless-stopped`, `on-failure` with no cap or more than 5 retries) is reported; no restart policy at all

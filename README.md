@@ -21,7 +21,7 @@ shows), not a live process listing.
 
 ```sh
 pipx install git+https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor.git        # latest release branch; puts `docker-baseline-auditor` on PATH
-pipx install git+https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor.git@v1.2.0  # a pinned release
+pipx install git+https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor.git@v1.2.1  # a pinned release
 brew install canutethegreat/errant-tools/docker-baseline-auditor   # after: brew tap canutethegreat/errant-tools https://git.canutethegreat.com/CanuteTheGreat/homebrew-errant-tools
 scoop install errant-tools/docker-baseline-auditor                 # after: scoop bucket add errant-tools https://git.canutethegreat.com/CanuteTheGreat/scoop-errant-tools
 ```

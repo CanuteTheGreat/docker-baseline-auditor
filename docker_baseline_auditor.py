@@ -40,7 +40,7 @@ one such finding, 2 = the docker CLI is missing or the daemon can't be reached
 (the audit is skipped rather than reporting "0 containers checked") or bad
 usage. No data leaves the host.
 """
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 import argparse
 import json
