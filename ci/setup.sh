@@ -7,3 +7,9 @@ BASE="https://download.docker.com/linux/static/stable/$ARCH"
 V=$(curl -fsSL "$BASE/" | grep -o 'docker-[0-9][0-9.]*\.tgz' | sed 's/docker-//; s/\.tgz//' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
 curl -fsSL "$BASE/docker-$V.tgz" | tar -xz -C /usr/local/bin --strip-components=1 docker/docker
 docker version --format 'docker CLI {{.Client.Version}} -> engine {{.Server.Version}}'
+# Reference implementation for tests/test_accuracy.py: Docker Bench for Security (CIS Docker Benchmark v1.6.0), pinned;
+# it refuses to start without ss/netstat
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq >/dev/null && apt-get install -y -qq iproute2 >/dev/null
+git clone -q https://github.com/docker/docker-bench-security /opt/docker-bench-security
+git -C /opt/docker-bench-security checkout -q 154869da6418089decf7e1ab0cfca0e1cdfc5c49

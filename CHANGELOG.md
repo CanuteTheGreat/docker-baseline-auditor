@@ -2,6 +2,12 @@
 
 All notable changes. Versions are git tags; each tag has a Forgejo release with checksums.
 
+## Unreleased
+
+- CIS 5.15 now follows the benchmark's audit: a restart policy that restarts without bound (`always`,
+  `unless-stopped`, `on-failure` with no cap or more than 5 retries) is reported; no restart policy at all
+  is compliant (it used to be the other way round). Found by the new Docker Bench differential suite.
+
 ## 1.2.0 - 2026-10-16
 
 - **CI gate fixed:** the tool used to exit 0 after every run even with HIGH findings. It now exits 1 when

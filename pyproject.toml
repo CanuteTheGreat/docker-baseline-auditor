@@ -40,4 +40,11 @@ path = "docker_baseline_auditor.py"
 only-include = ["docker_baseline_auditor.py"]
 
 [tool.hatch.build.targets.sdist]
-only-include = ["docker_baseline_auditor.py", "README.md", "LICENSE", "CHANGELOG.md", "tests"]
+only-include = ["docker_baseline_auditor.py", "README.md", "LICENSE", "CHANGELOG.md", "tests", "claims.json"]
+
+[tool.mutmut]
+# ci/mutation.sh (nightly workflow)
+source_paths = ["docker_baseline_auditor.py"]
+pytest_add_cli_args_test_selection = ["tests/"]
+also_copy = ["claims.json", "ci", "README.md", "CHANGELOG.md"]
+

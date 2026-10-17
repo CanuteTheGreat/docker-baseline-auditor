@@ -1,0 +1,201 @@
+{
+ "offline": true,
+ "optional_imports": [],
+ "hidden_options": [],
+ "claims": [
+  {
+   "id": "cis",
+   "text": "checked against the **CIS Docker Benchmark v1.6.0**",
+   "also": [
+    "results line up with the benchmark (and with Docker\nBench for Security)"
+   ],
+   "tests": [
+    "tests/test_accuracy.py::TestAgainstDockerBench::test_same_verdict_per_container_and_cis_id",
+    "tests/test_accuracy.py::TestAgainstDockerBench::test_corpus_triggers_both_outcomes_for_most_ids"
+   ]
+  },
+  {
+   "id": "daemon",
+   "text": "Daemon: icc on the default bridge, log level, insecure registries",
+   "tests": [
+    "tests/test_docker_baseline_auditor.py::TestDaemonChecks::test_real_engine_info_matches_findings",
+    "tests/test_docker_baseline_auditor.py::TestDaemonChecks::test_daemon_json_and_flags"
+   ]
+  },
+  {
+   "id": "host-files",
+   "text": "Host files (local daemon only)",
+   "tests": [
+    "tests/test_docker_baseline_auditor.py::TestDaemonChecks::test_host_file_permissions",
+    "tests/test_docker_baseline_auditor.py::TestContentTrustAndRemoteHost::test_remote_docker_host_skips_host_file_checks"
+   ]
+  },
+  {
+   "id": "content-trust",
+   "text": "Docker Content Trust not enabled",
+   "tests": [
+    "tests/test_docker_baseline_auditor.py::TestContentTrustAndRemoteHost::test_content_trust_flag"
+   ]
+  },
+  {
+   "id": "containers",
+   "text": "Containers: configured to run as root, AppArmor/seccomp unconfined",
+   "tests": [
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_hardened_container_is_clean",
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_privileged",
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_host_namespaces",
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_docker_socket_and_sensitive_mounts",
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_shared_mount_propagation",
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_ports_privileged_and_all_interfaces",
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_devices",
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_root_user_forms",
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_missing_limits_and_hardening_flags",
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_unconfined_security_profiles",
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_added_capabilities",
+    "tests/test_accuracy.py::TestAgainstDockerBench::test_same_verdict_per_container_and_cis_id",
+    "tests/test_accuracy.py::TestAgainstDockerBench::test_read_only_sensitive_mount_is_reported_at_lower_severity"
+   ]
+  },
+  {
+   "id": "latest",
+   "text": "`:latest`/untagged images (ops hygiene)",
+   "tests": [
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_image_tag_rules"
+   ]
+  },
+  {
+   "id": "run-as-root",
+   "text": "\"Run as root\" means the container's configured `USER`",
+   "tests": [
+    "tests/test_docker_baseline_auditor.py::TestContainerChecks::test_root_user_forms"
+   ]
+  },
+  {
+   "id": "read-only",
+   "text": "Read-only: `docker info`, `docker network inspect bridge`, `docker ps` and\n`docker inspect`",
+   "tests": [
+    "tests/test_docker_baseline_auditor.py::TestCli::test_json_and_text_reports_and_exit_codes"
+   ]
+  },
+  {
+   "id": "remote",
+   "text": "With a remote\n`DOCKER_HOST` the host-file checks (3.x) are skipped and the report says so",
+   "tests": [
+    "tests/test_docker_baseline_auditor.py::TestContentTrustAndRemoteHost::test_remote_docker_host_skips_host_file_checks"
+   ]
+  },
+  {
+   "id": "json",
+   "text": "docker-baseline-auditor --json",
+   "also": [
+    "`--json` prints"
+   ],
+   "tests": [
+    "tests/test_docker_baseline_auditor.py::TestCli::test_json_and_text_reports_and_exit_codes"
+   ],
+   "flags": [
+    "--json"
+   ]
+  },
+  {
+   "id": "include-exclude-all",
+   "text": "docker-baseline-auditor --exclude 5.27,2.13",
+   "also": [
+    "docker-baseline-auditor --include 5 --all"
+   ],
+   "tests": [
+    "tests/test_docker_baseline_auditor.py::TestCli::test_json_and_text_reports_and_exit_codes"
+   ],
+   "flags": [
+    "--include",
+    "--exclude",
+    "--all"
+   ]
+  },
+  {
+   "id": "version",
+   "text": "docker-baseline-auditor --version",
+   "tests": [
+    "tests/test_docker_baseline_auditor.py::TestCli::test_help_version_and_bad_option",
+    "tests/test_claims.py::TestClaims::test_version_is_latest_changelog_entry"
+   ],
+   "flags": [
+    "--version"
+   ]
+  },
+  {
+   "id": "exit-codes",
+   "text": "Exit codes (same convention as every Errant Solutions tool)",
+   "tests": [
+    "tests/test_docker_baseline_auditor.py::TestCli::test_json_and_text_reports_and_exit_codes",
+    "tests/test_docker_baseline_auditor.py::TestCli::test_docker_cli_missing_exits_2",
+    "tests/test_docker_baseline_auditor.py::TestCli::test_daemon_unreachable_exits_2",
+    "tests/test_docker_baseline_auditor.py::TestCli::test_help_version_and_bad_option"
+   ],
+   "flags": [
+    "--fail-on"
+   ]
+  },
+  {
+   "id": "stdlib-only",
+   "text": "Zero dependencies beyond a working `docker` CLI",
+   "tests": [
+    "tests/test_claims.py::TestClaims::test_stdlib_only"
+   ]
+  },
+  {
+   "id": "offline",
+   "text": "No network calls",
+   "tests": [
+    "tests/test_claims.py::TestClaims::test_offline_claim"
+   ]
+  },
+  {
+   "id": "install-pipx",
+   "text": "pipx install git+https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor.git",
+   "tests": [
+    "ci/install-channels.sh#pipx install -q \"git+$FORGEJO/CanuteTheGreat/$REPO.git\"",
+    ".forgejo/workflows/nightly.yml#ci/install-channels.sh"
+   ]
+  },
+  {
+   "id": "install-homebrew",
+   "text": "brew install canutethegreat/errant-tools/docker-baseline-auditor",
+   "tests": [
+    "repo:homebrew-errant-tools/Formula/docker-baseline-auditor.rb#test do",
+    "repo:homebrew-errant-tools/.forgejo/workflows/test.yml#ci/run-tests.sh"
+   ]
+  },
+  {
+   "id": "install-scoop",
+   "text": "scoop install errant-tools/docker-baseline-auditor",
+   "tests": [
+    "repo:scoop-errant-tools/bucket/docker-baseline-auditor.json#\"bin\"",
+    "repo:scoop-errant-tools/.forgejo/workflows/test.yml#ci/run-tests.sh"
+   ]
+  },
+  {
+   "id": "install-download",
+   "text": "https://errant.solutions/downloads/docker_baseline_auditor.py",
+   "tests": [
+    "ci/install-channels.sh#https://errant.solutions/downloads/$FILE"
+   ]
+  },
+  {
+   "id": "release-assets",
+   "text": "`SHA256SUMS` file",
+   "tests": [
+    "ci/install-channels.sh#sha256sum -c SHA256SUMS",
+    "ci/release.py#SHA256SUMS"
+   ]
+  },
+  {
+   "id": "python-versions",
+   "text": "Python 3.8+",
+   "tests": [
+    ".forgejo/workflows/test.yml#python: [\"3.8\"",
+    ".forgejo/workflows/nightly.yml#python: [\"3.8\""
+   ]
+  }
+ ]
+}

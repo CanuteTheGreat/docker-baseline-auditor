@@ -29,7 +29,7 @@ What is checked:
                  sensitive host paths mounted (5.6), privileged host ports
                  (5.8), host network (5.10), memory limit (5.11), read-only
                  root filesystem (5.13), ports bound to every interface (5.14),
-                 restart policy (5.15), host PID/IPC/UTS/user namespaces
+                 unbounded restart policy (5.15), host PID/IPC/UTS/user namespaces
                  (5.16/5.17/5.21/5.31), host devices (5.18), shared mount
                  propagation (5.20), no-new-privileges (5.26), health check
                  (5.27), pids limit (5.29), Docker socket mounted (5.32) and
@@ -316,9 +316,15 @@ def audit_container(data):
     if not hc.get("ReadonlyRootfs"):
         add("5.13", "LOW", "root filesystem is writable (no --read-only)")
 
-    # Docker reports an unset policy as "" on old engines and "no" on current ones.
-    if (hc.get("RestartPolicy") or {}).get("Name", "") in ("", "no"):
-        add("5.15", "LOW", "no restart policy set")
+    # CIS 5.15: a policy that restarts without bound (always, unless-stopped, on-failure with no or a
+    # >5 retry cap; MaximumRetryCount 0 means unlimited) can be abused to keep a crashing container
+    # hammering the host. No policy at all is compliant. ("" is how old engines report "no".)
+    rp = hc.get("RestartPolicy") or {}
+    policy, retries = rp.get("Name") or "no", rp.get("MaximumRetryCount") or 0
+    if policy in ("always", "unless-stopped"):
+        add("5.15", "LOW", f"restart policy '{policy}' restarts without limit (CIS: on-failure with at most 5 retries)")
+    elif policy == "on-failure" and not 0 < retries <= 5:
+        add("5.15", "LOW", f"restart policy on-failure with {retries or 'unlimited'} retries (CIS: at most 5)")
 
     if hc.get("PidMode") == "host":
         add("5.16", "HIGH", "host PID namespace shared (can see/signal host processes)")

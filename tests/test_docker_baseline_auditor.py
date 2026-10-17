@@ -20,7 +20,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(os.path.dirname(HERE), "docker_baseline_auditor.py")
 IMAGE = "alpine:3.20"
 CAP = ["--memory", "64m", "--cpus", "0.2", "--pids-limit", "32"]
-HARDENED = CAP + ["--user", "1000:1000", "--restart", "unless-stopped", "--network", "none", "--read-only",
+HARDENED = CAP + ["--user", "1000:1000", "--restart", "on-failure:5", "--network", "none", "--read-only",
                   "--security-opt", "no-new-privileges", "--health-cmd", "true"]
 
 sys.path.insert(0, os.path.dirname(TOOL))
@@ -126,10 +126,13 @@ class TestContainerChecks(Base):
 
     def test_missing_limits_and_hardening_flags(self):
         f = self.ids_of(self.container("bare", "--user", "1000", "--network", "none", start=False))
-        self.assertTrue({"5.11", "5.13", "5.15", "5.26", "5.27", "5.29"} <= f, f)
-        no_restart = [o for o in HARDENED if o not in ("--restart", "unless-stopped")]
-        f = self.ids_of(self.container("restart", *no_restart, "--restart", "on-failure:3", start=False))
-        self.assertNotIn("5.15", f)
+        self.assertTrue({"5.11", "5.13", "5.26", "5.27", "5.29"} <= f, f)
+        self.assertNotIn("5.15", f)  # no restart policy at all is CIS-compliant
+        no_restart = [o for o in HARDENED if o not in ("--restart", "on-failure:5")]
+        for i, (policy, flagged) in enumerate([("on-failure:3", False), ("on-failure:5", False), ("on-failure", True),
+                                               ("on-failure:6", True), ("always", True), ("unless-stopped", True)]):
+            f = self.ids_of(self.container("restart%d" % i, *no_restart, "--restart", policy, start=False))
+            self.assertEqual("5.15" in f, flagged, policy)
 
     def test_image_tag_rules(self):
         latest_msg = ("-", "using ':latest' or untagged image (non-reproducible, harder to pin/patch)")
@@ -284,6 +287,63 @@ class TestCli(Base):
         self.assertEqual(p.stdout.strip(), "docker-baseline-auditor " + dba.__version__)
         self.assertEqual(run_tool("--bogus").returncode, 2)
         self.assertEqual(run_tool("--fail-on", "nope").returncode, 2)
+
+
+class TestContentTrustAndRemoteHost(unittest.TestCase):
+    def test_content_trust_flag(self):
+        env = {k: v for k, v in os.environ.items() if k != "DOCKER_CONTENT_TRUST"}
+        ids = [f["id"] for f in json.loads(run_tool("--json", "--include", "4.5", env=env).stdout)["daemon"]]
+        self.assertEqual(ids, ["4.5"])
+        env["DOCKER_CONTENT_TRUST"] = "1"
+        ids = [f["id"] for f in json.loads(run_tool("--json", "--include", "4.5", env=env).stdout)["daemon"]]
+        self.assertEqual(ids, [])
+
+    def test_remote_docker_host_skips_host_file_checks(self):
+        # a real TCP endpoint in front of the real engine: the tool must treat it as remote
+        import threading
+        sock_path = (os.environ.get("DOCKER_HOST") or "unix:///var/run/docker.sock")[len("unix://"):]
+        srv = socket.socket()
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(16)
+        port = srv.getsockname()[1]
+
+        def pipe(a, b):
+            try:
+                while True:
+                    data = a.recv(65536)
+                    if not data:
+                        break
+                    b.sendall(data)
+            except OSError:
+                pass
+            finally:
+                for s_ in (a, b):
+                    try:
+                        s_.shutdown(socket.SHUT_RDWR)
+                    except OSError:
+                        pass
+
+        def serve():
+            while True:
+                try:
+                    c, _ = srv.accept()
+                except OSError:
+                    return
+                u = socket.socket(socket.AF_UNIX)
+                u.connect(sock_path)
+                threading.Thread(target=pipe, args=(c, u), daemon=True).start()
+                threading.Thread(target=pipe, args=(u, c), daemon=True).start()
+
+        threading.Thread(target=serve, daemon=True).start()
+        try:
+            env = dict(os.environ, DOCKER_HOST="tcp://127.0.0.1:%d" % port)
+            p = run_tool("--include", "2,3", "--fail-on", "never", env=env)
+            self.assertEqual(p.returncode, 0, p.stderr)
+            self.assertIn("(remote DOCKER_HOST: host file checks 3.x skipped)", p.stdout)
+            data = json.loads(run_tool("--json", "--include", "3", "--fail-on", "never", env=env).stdout)
+            self.assertEqual([f["id"] for f in data["daemon"]], [])
+        finally:
+            srv.close()
 
 
 if __name__ == "__main__":
