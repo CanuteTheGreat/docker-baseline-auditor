@@ -19,12 +19,14 @@ from the CIS text, the CIS audit procedure is the reference and the deviation is
        the CIS rule decides the rest.
 * 5.2  only compared when the engine has AppArmor at all (CIS: "if applicable").
 """
+import calendar
 import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import uuid
 
@@ -70,10 +72,35 @@ def docker(*args, check=True):
     return p.stdout.strip()
 
 
+# A run killed before tearDownModule (mutmut's per-mutant timeout, a cancelled CI job) leaves its
+# corpus behind, and the --restart always/unless-stopped ones never exit on their own. One mutation
+# run leaked ~2000 containers on the arm64 runner this way (load 36 on 8 vCPUs, and every later
+# run's tool/bench scan got slower, so more mutants timed out and leaked more). So each run first
+# removes corpora older than any live run can be: setUpModule is bounded by the 300 s tool run plus
+# the 900 s bench run, so 30 minutes never touches a concurrent run's containers.
+STALE_AFTER = 30 * 60
+
+
+def reap_stale_corpora():
+    ids = docker("ps", "-aq", "--filter", "name=^dba-acc-", check=False).split()
+    if not ids:
+        return
+    now = time.time()
+    for line in docker("inspect", "--format", "{{.Id}} {{.Created}}", *ids, check=False).splitlines():
+        cid, _, created = line.partition(" ")
+        try:
+            age = now - calendar.timegm(time.strptime(created[:19], "%Y-%m-%dT%H:%M:%S"))
+        except ValueError:
+            continue
+        if age > STALE_AFTER:
+            docker("rm", "-f", "-v", cid, check=False)
+
+
 def setUpModule():
     global PREFIX, NAMES, TOOL_IDS, BENCH_IDS, INSPECT, APPARMOR
     PREFIX = "dba-acc-%s" % uuid.uuid4().hex[:8]
     NAMES = {}
+    reap_stale_corpora()
     docker("pull", "-q", IMAGE)
     try:
         for suffix, opts in CORPUS.items():
