@@ -41,6 +41,11 @@ def run_tool(*args, env=None):
 
 
 def setUpModule():
+    # named volumes of earlier runs that were killed mid-test (e.g. a mutation-testing timeout);
+    # a volume still referenced by a container (a concurrent run's) is not dangling and stays
+    for v in docker("volume", "ls", "-q", "--filter", "dangling=true", "--filter", "name=^dba-test-",
+                    check=False).split():
+        docker("volume", "rm", v, check=False)
     docker("pull", "-q", IMAGE)
 
 
@@ -94,9 +99,10 @@ class TestContainerChecks(Base):
         self.assertIn(("5.6", "sensitive host path / mounted read-write"), f)
         # an ordinary data directory and a named volume are fine
         d = tempfile.mkdtemp()
+        # cleanups run after tearDown has removed the container, and also when an assertion fails
+        self.addCleanup(docker, "volume", "rm", "-f", f"{self.prefix}-vol", check=False)
         ok = self.container("datadir", *HARDENED, "-v", f"{d}:/data", "-v", f"{self.prefix}-vol:/vol", start=False)
         self.assertEqual(self.findings_of(ok), set())
-        docker("volume", "rm", "-f", f"{self.prefix}-vol", check=False)
 
     def test_shared_mount_propagation(self):
         # --mount checks that the source exists on the engine's host, so use one that always does
