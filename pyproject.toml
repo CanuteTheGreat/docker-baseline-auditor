@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "docker-baseline-auditor"
+dynamic = ["version"]
+description = "Read-only Docker host and container baseline checker with CIS Docker Benchmark ids"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.8"
+authors = [{ name = "Errant Solutions", email = "hello@errant.solutions" }]
+keywords = ["docker", "cis", "container", "security", "audit"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+    "Topic :: System :: Systems Administration",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://errant.solutions/tools/docker-baseline-auditor.html"
+Source = "https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor"
+Changelog = "https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor/src/branch/master/CHANGELOG.md"
+Releases = "https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor/releases"
+
+[project.scripts]
+docker-baseline-auditor = "docker_baseline_auditor:main"
+
+[tool.hatch.version]
+path = "docker_baseline_auditor.py"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["docker_baseline_auditor.py"]
+
+[tool.hatch.build.targets.sdist]
+only-include = ["docker_baseline_auditor.py", "README.md", "LICENSE", "CHANGELOG.md", "tests"]
