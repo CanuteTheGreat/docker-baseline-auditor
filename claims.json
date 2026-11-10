@@ -78,6 +78,41 @@
    ]
   },
   {
+   "id": "static-scan",
+   "text": "### Static scan of Dockerfiles and Compose files",
+   "also": [
+    "`--include`, `--exclude`, `--fail-on` and `--json` apply to the static findings too",
+    "No docker CLI or daemon is needed",
+    "docker-baseline-auditor --dockerfile .",
+    "docker-baseline-auditor --compose docker-compose.yml --json"
+   ],
+   "tests": [
+    "tests/test_static.py::TestDockerfile::test_root_and_healthcheck",
+    "tests/test_static.py::TestDockerfile::test_package_index_update",
+    "tests/test_static.py::TestDockerfile::test_add_vs_copy",
+    "tests/test_static.py::TestDockerfile::test_secrets_in_env_and_arg",
+    "tests/test_static.py::TestCompose::test_every_check_fires_for_web",
+    "tests/test_static.py::TestCli::test_directory_scan_json_and_exit_code",
+    "tests/test_static.py::TestCli::test_include_exclude_apply_to_static_findings",
+    "tests/test_static.py::TestCli::test_static_does_not_need_docker",
+    "tests/test_static.py::TestCli::test_errors_exit_2_without_docker"
+   ],
+   "flags": [
+    "--dockerfile",
+    "--compose"
+   ]
+  },
+  {
+   "id": "live-flag",
+   "text": "docker-baseline-auditor --dockerfile Dockerfile --compose . --live",
+   "tests": [
+    "tests/test_static.py::TestCli::test_live_flag_adds_the_daemon_audit"
+   ],
+   "flags": [
+    "--live"
+   ]
+  },
+  {
    "id": "remote",
    "text": "With a remote\n`DOCKER_HOST` the host-file checks (3.x) are skipped and the report says so",
    "tests": [

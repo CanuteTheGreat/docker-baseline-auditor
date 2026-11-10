@@ -14,6 +14,25 @@ Bench for Security). Zero dependencies beyond a working `docker` CLI.
 | Containers: configured to run as root, AppArmor/seccomp unconfined, added capabilities, privileged, sensitive host paths mounted (`/`, `/etc`, `/proc`, `/var/run`...), privileged host ports, host network, memory limit, writable root filesystem, ports published on every interface, restart policy without a retry cap (always/unless-stopped/on-failure over 5), host PID/IPC/UTS/user namespaces, host devices, shared mount propagation, no-new-privileges, health check, pids limit, Docker socket mounted | 4.1 5.2 5.4 5.5 5.6 5.8 5.10 5.11 5.13 5.14 5.15 5.16 5.17 5.18 5.20 5.21 5.22 5.26 5.27 5.29 5.31 5.32 |
 | `:latest`/untagged images (ops hygiene) | - |
 
+### Static scan of Dockerfiles and Compose files
+
+Catch the same problems before anything is built or started. No docker CLI or daemon is needed:
+
+```
+docker-baseline-auditor --dockerfile .                       # every Dockerfile / *.Dockerfile / Containerfile under .
+docker-baseline-auditor --compose docker-compose.yml --json  # one result per service
+docker-baseline-auditor --dockerfile Dockerfile --compose . --live   # static files plus the live daemon and containers
+```
+
+| Scanned | Findings (CIS id) |
+|---|---|
+| Dockerfile | final stage runs as root (4.1), no `HEALTHCHECK` (4.6), `apt-get update` on its own `RUN` line (4.7), `ADD` instead of `COPY` or `ADD` of a URL (4.9), secrets in `ENV`/`ARG` (4.10), `:latest`/untagged base images, a download piped into a shell, `EXPOSE 22`, world-writable `chmod` |
+| Compose | per service: user (4.1), seccomp/AppArmor unconfined, added capabilities, privileged, sensitive host paths and the Docker socket mounted, privileged and all-interface ports, host network/PID/IPC/UTS/user namespaces, devices, shared propagation, memory/pids limits, read-only root, restart policy, no-new-privileges, health check (5.2 5.4 5.5 5.6 5.8 5.10 5.11 5.13 5.14 5.15 5.16 5.17 5.18 5.20 5.21 5.22 5.26 5.27 5.29 5.31 5.32), hardcoded secrets in `environment`, `:latest` images |
+
+`--include`, `--exclude`, `--fail-on` and `--json` apply to the static findings too (`--json` adds a `files` list).
+Compose files are read with a built-in YAML subset (anchors, `<<` merges, flow lists, quoted strings); a file it can't parse is an
+error (exit 2), never a silent pass. Variable defaults like `${SOCK:-/var/run/docker.sock}` are judged by their default.
+
 "Run as root" means the container's configured `USER` (what `docker inspect`
 shows), not a live process listing.
 
@@ -21,7 +40,7 @@ shows), not a live process listing.
 
 ```sh
 pipx install git+https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor.git        # latest release branch; puts `docker-baseline-auditor` on PATH
-pipx install git+https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor.git@v1.2.1  # a pinned release
+pipx install git+https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor.git@v1.3.0  # a pinned release
 brew install canutethegreat/errant-tools/docker-baseline-auditor   # after: brew tap canutethegreat/errant-tools https://git.canutethegreat.com/CanuteTheGreat/homebrew-errant-tools
 scoop install errant-tools/docker-baseline-auditor                 # after: scoop bucket add errant-tools https://git.canutethegreat.com/CanuteTheGreat/scoop-errant-tools
 ```

@@ -2,6 +2,15 @@
 
 All notable changes. Versions are git tags; each tag has a Forgejo release with checksums.
 
+## 1.3.0 - 2026-11-10
+
+- **Static scan of Dockerfiles and Compose files:** `--dockerfile PATH` and `--compose PATH` (repeatable; files or
+  directories) check the same CIS ids before anything is built or started, with no docker CLI or daemon needed.
+  Dockerfile: root user (4.1), no HEALTHCHECK (4.6), package index update alone on a RUN line (4.7), ADD instead of COPY
+  or ADD of a URL (4.9), secrets in ENV/ARG (4.10), `:latest` base images, a download piped into a shell, EXPOSE 22,
+  world-writable chmod. Compose: every container check a compose key can express, plus hardcoded secrets in `environment`.
+  `--live` adds the live daemon audit to a static run. `--json` gains a `files` list and `summary.files`.
+
 ## 1.2.1 - 2026-10-17
 
 - CIS 5.15 now follows the benchmark's audit: a restart policy that restarts without bound (`always`,
