@@ -35,3 +35,12 @@ jobs:
           # These tests drive real containers on the CI host's own Docker engine.
           EXTRA_DOCKER_ARGS: -v /var/run/docker.sock:/var/run/docker.sock
         run: sh ci/run-tests.sh "${{ matrix.python }}"
+
+  audit:
+    # blocking dependency-vulnerability gate (pip-audit over the package as a user installs it)
+    runs-on: colo-light-x86_64
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: pip-audit (capped container)
+        run: sh ci/pip-audit.sh 3.13
