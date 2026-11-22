@@ -1,0 +1,14 @@
+# Known-equivalent mutants: no test can tell them from the original code. The incremental mutation gate
+# (ci/mutation-incremental.py gate) treats them as known survivors, so a missing baseline can't turn them
+# into "NEW SURVIVOR". Format: <mutmut key> # reason. Documented as equivalent in commit 981f698
+# (tests: pin the static-scan code, 9 of the 108 new mutants of 1.3.0). Do NOT add a mutant here without
+# proving it equivalent; the floor in ci/mutation-min-score is unchanged.
+docker_baseline_auditor.xǁ_Yamlǁseq__mutmut_13 # YAML subset parser: seq item slice, same result either way (981f698)
+docker_baseline_auditor.xǁ_Yamlǁvalue__mutmut_1 # YAML subset parser: unused anchor initialisation (981f698)
+docker_baseline_auditor.xǁ_Yamlǁvalue__mutmut_20 # YAML subset parser: block-scalar char-set, no observable difference (981f698)
+docker_baseline_auditor.x_audit_compose_service__mutmut_272 # compose rules: restart default 'no' / devices split maxsplit class (981f698)
+docker_baseline_auditor.x_audit_compose_service__mutmut_368 # compose rules: sort-key split maxsplit class (981f698)
+docker_baseline_auditor.x_audit_dockerfile__mutmut_400 # Dockerfile rules: DOCKER_CONTENT_TRUST default class (981f698)
+docker_baseline_auditor.x_untagged__mutmut_5 # image-ref parsing: rsplit maxsplit, same result (981f698)
+docker_baseline_auditor.x_run__mutmut_123 # run(): equivalent per 981f698 (static-scan code)
+docker_baseline_auditor.x_main__mutmut_174 # CLI: suppressed host-root metavar, help text never shown (981f698)

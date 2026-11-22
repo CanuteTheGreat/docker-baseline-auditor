@@ -497,6 +497,11 @@ def cmd_gate(a):
         print(f"mutation gate {a.id}: full run recorded ({len(cur)} survivor(s)); baseline -> {head[:10]}")
         return
     known = set(b.get("survivors", []))
+    # repo-level list of proven-equivalent mutants (one key per line, "# reason" after it): never "new"
+    eq = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mutation-equivalent.txt")
+    if os.path.exists(eq):
+        with open(eq, encoding="utf-8") as f:
+            known |= {ln.split("#")[0].strip() for ln in f if ln.split("#")[0].strip()}
     new = sorted(cur - known)
     if new:
         print(f"::error::mutation gate {a.id}: {len(new)} NEW surviving mutant(s) in code changed since {str(b.get('sha'))[:10]} - add tests that catch them:")
