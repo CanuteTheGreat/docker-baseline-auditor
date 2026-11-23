@@ -126,7 +126,9 @@
     "`--json` prints"
    ],
    "tests": [
-    "tests/test_docker_baseline_auditor.py::TestCli::test_json_and_text_reports_and_exit_codes"
+    "tests/test_docker_baseline_auditor.py::TestCli::test_json_and_text_reports_and_exit_codes",
+    "tests/test_cli_contract.py::TestJson::test_clean",
+    "tests/test_cli_contract.py::TestJson::test_findings"
    ],
    "flags": [
     "--json"
@@ -160,15 +162,43 @@
   },
   {
    "id": "exit-codes",
-   "text": "Exit codes (same convention as every Errant Solutions tool)",
+   "text": "Exit codes (the shared Errant Solutions CLI contract",
    "tests": [
     "tests/test_docker_baseline_auditor.py::TestCli::test_json_and_text_reports_and_exit_codes",
     "tests/test_docker_baseline_auditor.py::TestCli::test_docker_cli_missing_exits_2",
     "tests/test_docker_baseline_auditor.py::TestCli::test_daemon_unreachable_exits_2",
-    "tests/test_docker_baseline_auditor.py::TestCli::test_help_version_and_bad_option"
+    "tests/test_docker_baseline_auditor.py::TestCli::test_help_version_and_bad_option",
+    "tests/test_cli_contract.py::TestExitCodes::test_clean_is_0",
+    "tests/test_cli_contract.py::TestExitCodes::test_findings_is_1",
+    "tests/test_cli_contract.py::TestExitCodes::test_findings_below_the_gate_are_0",
+    "tests/test_cli_contract.py::TestExitCodes::test_bad_args_is_2_with_message_on_stderr",
+    "tests/test_cli_contract.py::TestExitCodes::test_missing_dockerfile_is_2",
+    "tests/test_cli_contract.py::TestExitCodes::test_docker_unavailable_keeps_documented_legacy_code_2",
+    "tests/test_cli_contract.py::TestExitCodes::test_unexpected_error_is_3_on_stderr_not_a_traceback_exit_1"
    ],
    "flags": [
     "--fail-on"
+   ]
+  },
+  {
+   "id": "quiet",
+   "text": "`--quiet` (`-q`) prints nothing on stdout, so the exit code is the whole answer",
+   "flags": [
+    "--quiet"
+   ],
+   "tests": [
+    "tests/test_cli_contract.py::TestQuiet::test_quiet_prints_nothing_but_keeps_exit_code",
+    "tests/test_cli_contract.py::TestQuiet::test_without_quiet_the_report_is_printed"
+   ]
+  },
+  {
+   "id": "json-schema",
+   "text": "`schema_version` is currently 1",
+   "tests": [
+    "tests/test_cli_contract.py::TestJson::test_clean",
+    "tests/test_cli_contract.py::TestJson::test_findings",
+    "tests/test_cli_contract.py::TestJson::test_errors_leave_stdout_empty_even_with_json",
+    "tests/test_cli_contract.py::TestJson::test_schema_rejects_a_document_without_the_contract_keys"
    ]
   },
   {

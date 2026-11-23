@@ -40,7 +40,7 @@ shows), not a live process listing.
 
 ```sh
 pipx install git+https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor.git        # latest release branch; puts `docker-baseline-auditor` on PATH
-pipx install git+https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor.git@v1.3.0  # a pinned release
+pipx install git+https://git.canutethegreat.com/CanuteTheGreat/docker-baseline-auditor.git@v1.4.0  # a pinned release
 brew install canutethegreat/errant-tools/docker-baseline-auditor   # after: brew tap canutethegreat/errant-tools https://git.canutethegreat.com/CanuteTheGreat/homebrew-errant-tools
 scoop install errant-tools/docker-baseline-auditor                 # after: scoop bucket add errant-tools https://git.canutethegreat.com/CanuteTheGreat/scoop-errant-tools
 ```
@@ -67,16 +67,19 @@ Read-only: `docker info`, `docker network inspect bridge`, `docker ps` and
 anything. No network calls, no data leaves the host. With a remote
 `DOCKER_HOST` the host-file checks (3.x) are skipped and the report says so.
 
-Exit codes (same convention as every Errant Solutions tool):
+Exit codes (the shared Errant Solutions CLI contract, see [docs/CLI-CONTRACT.md](docs/CLI-CONTRACT.md)):
 
 | Code | Meaning |
 |---|---|
 | 0 | no finding at or above `--fail-on` (default `high`) |
 | 1 | at least one finding at or above `--fail-on` |
-| 2 | the `docker` CLI is missing, the daemon can't be reached, or bad usage |
+| 2 | bad usage or input error (e.g. a `--dockerfile` path that doesn't exist); also (legacy, kept so existing scripts keep working) the `docker` CLI is missing or the daemon can't be reached |
+| 3 | unexpected runtime error (message on stderr) |
 
-`--json` prints `{"version", "engine", "daemon": [findings], "containers": [{"name", "image", "findings"}], "summary"}`
-where each finding is `{"id": "5.5", "severity": "HIGH", "message": "..."}`.
+`--json` prints `{"schema_version", "tool", "version", "exit_code", "engine", "daemon": [findings], "containers": [{"name", "image", "findings"}], "files", "summary"}`
+where each finding is `{"id": "5.5", "severity": "HIGH", "message": "..."}`; `schema_version` is currently 1 and its JSON Schema is
+[schema/docker-baseline-auditor.schema.json](schema/docker-baseline-auditor.schema.json). Errors are never printed as JSON: the message goes to stderr and stdout stays empty.
+`--quiet` (`-q`) prints nothing on stdout, so the exit code is the whole answer.
 
 ## License / pricing
 

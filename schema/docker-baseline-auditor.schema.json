@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "docker-baseline-auditor --json output (schema_version 1)",
+  "type": "object",
+  "required": ["schema_version", "tool", "version", "exit_code", "daemon", "containers", "files", "summary"],
+  "definitions": {
+    "finding": {
+      "type": "object",
+      "required": ["id", "severity", "message"],
+      "properties": {
+        "id": {"type": "string"},
+        "severity": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW", "INFO"]},
+        "message": {"type": "string"}
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "tool": {"type": "string", "const": "docker-baseline-auditor"},
+    "version": {"type": "string"},
+    "exit_code": {"type": "integer", "enum": [0, 1]},
+    "engine": {"type": ["string", "null"]},
+    "live": {"type": "boolean"},
+    "daemon": {"type": "array", "items": {"type": "object"}},
+    "containers": {"type": "array", "items": {"type": "object", "required": ["name", "image", "findings"]}},
+    "files": {"type": "array", "items": {"type": "object", "required": ["name", "image", "findings"]}},
+    "summary": {
+      "type": "object",
+      "required": ["containers", "files", "fail_on", "failed"],
+      "properties": {
+        "containers": {"type": "integer"},
+        "files": {"type": "integer"},
+        "fail_on": {"type": "string", "enum": ["high", "medium", "low", "never"]},
+        "failed": {"type": "boolean"}
+      }
+    }
+  }
+}

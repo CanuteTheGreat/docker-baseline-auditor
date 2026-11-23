@@ -46,12 +46,14 @@ What is checked:
                  (5.27), pids limit (5.29), Docker socket mounted (5.32) and
                  ':latest'/untagged images (ops hygiene, no CIS id)
 
-Exit codes: 0 = nothing at or above --fail-on (default: high), 1 = at least
-one such finding, 2 = the docker CLI is missing or the daemon can't be reached
-(the audit is skipped rather than reporting "0 containers checked") or bad
-usage. No data leaves the host.
+Exit codes (shared CLI contract, docs/CLI-CONTRACT.md): 0 = nothing at or above --fail-on
+(default: high), 1 = at least one such finding, 2 = bad usage or input error, or (legacy,
+kept) the docker CLI is missing or the daemon can't be reached (the audit is skipped rather
+than reporting "0 containers checked"), 3 = unexpected runtime error. --json prints one object
+with schema_version, tool, version and exit_code; --quiet prints nothing on stdout. No data
+leaves the host.
 """
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 
 import argparse
 import json
@@ -923,12 +925,21 @@ def run(args):
 
 
 def main(argv=None):
+    """Entry point. Any unexpected exception is a runtime error (exit 3), never a bare traceback exit 1."""
+    try:
+        return _main(argv)
+    except Exception as exc:  # SystemExit (argparse usage errors, exit 2) is not an Exception
+        print("docker-baseline-auditor: error: %s: %s" % (type(exc).__name__, exc), file=sys.stderr)
+        return 3
+
+
+def _main(argv=None):
     parser = argparse.ArgumentParser(
         prog="docker-baseline-auditor",
         description="Read-only Docker security baseline checker (CIS Docker Benchmark v1.6.0 ids): "
                     "audits the daemon, its host files and every running container.",
         epilog="Exit codes: 0 nothing at/above --fail-on, 1 findings at/above --fail-on, "
-               "2 docker unavailable or bad usage.")
+               "2 docker unavailable or bad usage, 3 unexpected error.")
     parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
     parser.add_argument("--json", action="store_true", help="emit machine-readable JSON instead of the text report")
     parser.add_argument("--fail-on", choices=["high", "medium", "low", "never"], default="high",
@@ -945,15 +956,14 @@ def main(argv=None):
     parser.add_argument("--live", action="store_true",
                         help="with --dockerfile/--compose: also audit the live daemon and containers")
     parser.add_argument("--daemon-json", metavar="PATH", help="daemon.json to read (default /etc/docker/daemon.json)")
+    parser.add_argument("-q", "--quiet", action="store_true",
+                        help="print nothing on stdout; the exit code (and errors on stderr) are the result")
     parser.add_argument("--host-root", default="/", metavar="DIR", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     try:
         res = run(args)
     except (DockerUnavailableError, StaticScanError) as exc:
-        if args.json:
-            print(json.dumps({"error": str(exc)}, indent=2))
-        else:
-            print(f"docker-baseline-auditor: ERROR -- {exc}", file=sys.stderr)
+        print(f"docker-baseline-auditor: ERROR -- {exc}", file=sys.stderr)
         return 2
 
     every = res["daemon"] + [f for c in res["containers"] + res["files"] for f in c["findings"]]
@@ -962,9 +972,13 @@ def main(argv=None):
     failing = gate is not None and any(RANK[f["severity"]] <= gate for f in every)
     res["summary"] = dict(counts, containers=len(res["containers"]), files=len(res["files"]), fail_on=args.fail_on, failed=failing)
 
+    code = 1 if failing else 0
+    if args.quiet:
+        return code
     if args.json:
-        print(json.dumps(dict(res, version=__version__), indent=2))
-        return 1 if failing else 0
+        print(json.dumps(dict(res, schema_version=1, tool="docker-baseline-auditor", version=__version__,
+                              exit_code=code), indent=2))
+        return code
 
     def order(f):
         return RANK[f["severity"]], f["id"]
@@ -995,7 +1009,7 @@ def main(argv=None):
         print(f"Clean (no findings): {', '.join(clean)}")
     if failing:
         print(f"\nFAIL: findings at or above {args.fail_on.upper()} (exit 1)")
-    return 1 if failing else 0
+    return code
 
 
 if __name__ == "__main__":

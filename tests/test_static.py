@@ -404,7 +404,8 @@ class TestCli(unittest.TestCase):
             self.assertIn(want, p.stderr)
         p = run_tool("--compose", env_path, "--json")
         self.assertEqual(p.returncode, 2)
-        self.assertIn("compose file path not found", json.loads(p.stdout)["error"])
+        self.assertEqual(p.stdout, "")  # the error goes to stderr, never a JSON document on stdout
+        self.assertIn("compose file path not found", p.stderr)
 
     def test_static_does_not_need_docker(self):
         env = dict(os.environ, PATH=os.path.join(self.dir, "empty"))

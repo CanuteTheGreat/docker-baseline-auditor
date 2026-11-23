@@ -283,7 +283,8 @@ class TestCli(Base):
         self.assertIn("`docker ps` failed", p.stderr)
         p = run_tool("--json", env=env)
         self.assertEqual(p.returncode, 2)
-        self.assertIn("docker ps", json.loads(p.stdout)["error"])
+        self.assertEqual(p.stdout, "")  # the error goes to stderr, never a JSON document on stdout
+        self.assertIn("docker ps", p.stderr)
 
     def test_help_version_and_bad_option(self):
         p = run_tool("--help")

@@ -580,7 +580,8 @@ class TestMainOutput(unittest.TestCase):
                      "--live with --dockerfile/--compose: also audit the live daemon and containers",
                      "--daemon-json PATH daemon.json to read (default /etc/docker/daemon.json)",
                      "Exit codes: 0 nothing at/above --fail-on, 1 findings at/above --fail-on, "
-                     "2 docker unavailable or bad usage."):
+                     "2 docker unavailable or bad usage, 3 unexpected error.",
+                     "-q, --quiet print nothing on stdout; the exit code (and errors on stderr) are the result"):
             self.assertIn(frag, text)
 
 

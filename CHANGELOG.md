@@ -2,6 +2,13 @@
 
 All notable changes. Versions are git tags; each tag has a Forgejo release with checksums.
 
+## 1.4.0 - 2026-11-23
+
+- Shared CLI contract across the Errant Solutions tools ([docs/CLI-CONTRACT.md](docs/CLI-CONTRACT.md)): exit 0 clean, 1 findings, 2 usage/input error, 3 unexpected runtime error (an uncaught exception used to be a traceback with exit 1). Exit codes this tool already documented for other cases are kept and marked legacy in the README.
+- New `--quiet` / `-q`: no stdout, exit code only (errors stay on stderr).
+- `--json` now carries `schema_version` (1), `tool` and `exit_code` next to the existing keys (nothing removed or renamed).
+- The JSON Schema of the `--json` output is in `schema/`; contract tests (exit codes, JSON against the schema, quiet, stderr) run on every push, and the push trigger now covers every branch.
+
 ## 1.3.0 - 2026-11-10
 
 - **Static scan of Dockerfiles and Compose files:** `--dockerfile PATH` and `--compose PATH` (repeatable; files or
