@@ -31,10 +31,26 @@ jobs:
     runs-on: mutation-any
     timeout-minutes: 150
     steps:
-      - uses: actions/checkout@v4
-        with:
-          # the incremental diff starts at the last green run's commit
-          fetch-depth: 0
+      - name: Checkout (bounded retry, full history)
+        # actions/checkout@v4 is cloned by the runner from data.forgejo.org, which answers HTTP 502 now
+        # and then (run 89, python 3.8 leg: "could not fetch remote 'origin' ... 502"), and the runner
+        # does not retry that. The incremental diff needs full history. Plain git against our own Forgejo, 6 attempts with growing sleeps.
+        env:
+          CO_TOKEN: ${{ github.token }}
+        run: |
+          url="${{ github.server_url }}/${{ github.repository }}.git"
+          auth="Authorization: basic $(printf 'x-access-token:%s' "$CO_TOKEN" | base64 -w0)"
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            rm -rf .git
+            if git init -q . && git remote add origin "$url" \
+               && git -c "http.extraHeader=$auth" fetch -q origin "${{ github.sha }}" \
+               && git checkout -q --detach FETCH_HEAD; then ok=1; break; fi
+            echo "checkout attempt $i failed; retrying" >&2
+            sleep $((i * 10))
+          done
+          [ "$ok" = 1 ] || { echo "::error::checkout failed after 6 attempts"; exit 1; }
+          git remote set-url origin "$url"
       - name: Mutation baseline (last green run)
         uses: actions/cache@v4
         with:
@@ -64,7 +80,26 @@ jobs:
       matrix:
         python: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout (bounded retry)
+        # actions/checkout@v4 is cloned by the runner from data.forgejo.org, which answers HTTP 502 now
+        # and then (run 89, python 3.8 leg: "could not fetch remote 'origin' ... 502"), and the runner
+        # does not retry that. The incremental diff needs full history. Plain git against our own Forgejo, 6 attempts with growing sleeps.
+        env:
+          CO_TOKEN: ${{ github.token }}
+        run: |
+          url="${{ github.server_url }}/${{ github.repository }}.git"
+          auth="Authorization: basic $(printf 'x-access-token:%s' "$CO_TOKEN" | base64 -w0)"
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            rm -rf .git
+            if git init -q . && git remote add origin "$url" \
+               && git -c "http.extraHeader=$auth" fetch -q --depth=1 origin "${{ github.sha }}" \
+               && git checkout -q --detach FETCH_HEAD; then ok=1; break; fi
+            echo "checkout attempt $i failed; retrying" >&2
+            sleep $((i * 10))
+          done
+          [ "$ok" = 1 ] || { echo "::error::checkout failed after 6 attempts"; exit 1; }
+          git remote set-url origin "$url"
       - name: Test suite (python ${{ matrix.python }}, capped container)
         env:
           EXTRA_DOCKER_ARGS: -v /var/run/docker.sock:/var/run/docker.sock
@@ -76,7 +111,26 @@ jobs:
     runs-on: colo-light-x86_64
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout (bounded retry)
+        # actions/checkout@v4 is cloned by the runner from data.forgejo.org, which answers HTTP 502 now
+        # and then (run 89, python 3.8 leg: "could not fetch remote 'origin' ... 502"), and the runner
+        # does not retry that. The incremental diff needs full history. Plain git against our own Forgejo, 6 attempts with growing sleeps.
+        env:
+          CO_TOKEN: ${{ github.token }}
+        run: |
+          url="${{ github.server_url }}/${{ github.repository }}.git"
+          auth="Authorization: basic $(printf 'x-access-token:%s' "$CO_TOKEN" | base64 -w0)"
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            rm -rf .git
+            if git init -q . && git remote add origin "$url" \
+               && git -c "http.extraHeader=$auth" fetch -q --depth=1 origin "${{ github.sha }}" \
+               && git checkout -q --detach FETCH_HEAD; then ok=1; break; fi
+            echo "checkout attempt $i failed; retrying" >&2
+            sleep $((i * 10))
+          done
+          [ "$ok" = 1 ] || { echo "::error::checkout failed after 6 attempts"; exit 1; }
+          git remote set-url origin "$url"
       - name: Install from every documented channel and run it
         run: sh ci/install-channels.sh 3.13
 
@@ -85,6 +139,25 @@ jobs:
     runs-on: colo-light-x86_64
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout (bounded retry)
+        # actions/checkout@v4 is cloned by the runner from data.forgejo.org, which answers HTTP 502 now
+        # and then (run 89, python 3.8 leg: "could not fetch remote 'origin' ... 502"), and the runner
+        # does not retry that. The incremental diff needs full history. Plain git against our own Forgejo, 6 attempts with growing sleeps.
+        env:
+          CO_TOKEN: ${{ github.token }}
+        run: |
+          url="${{ github.server_url }}/${{ github.repository }}.git"
+          auth="Authorization: basic $(printf 'x-access-token:%s' "$CO_TOKEN" | base64 -w0)"
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            rm -rf .git
+            if git init -q . && git remote add origin "$url" \
+               && git -c "http.extraHeader=$auth" fetch -q --depth=1 origin "${{ github.sha }}" \
+               && git checkout -q --detach FETCH_HEAD; then ok=1; break; fi
+            echo "checkout attempt $i failed; retrying" >&2
+            sleep $((i * 10))
+          done
+          [ "$ok" = 1 ] || { echo "::error::checkout failed after 6 attempts"; exit 1; }
+          git remote set-url origin "$url"
       - name: pip-audit (capped container)
         run: sh ci/pip-audit.sh 3.13

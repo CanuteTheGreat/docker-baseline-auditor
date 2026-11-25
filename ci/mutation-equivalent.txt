@@ -12,3 +12,9 @@ docker_baseline_auditor.x_audit_dockerfile__mutmut_400 # Dockerfile rules: DOCKE
 docker_baseline_auditor.x_untagged__mutmut_5 # image-ref parsing: rsplit maxsplit, same result (981f698)
 docker_baseline_auditor.x_run__mutmut_123 # run(): equivalent per 981f698 (static-scan code)
 docker_baseline_auditor.x_main__mutmut_174 # CLI: suppressed host-root metavar, help text never shown (981f698)
+# Added with the tests that killed the other 82 survivors of the 2026-11-24 first full run (score 98.64%). Proofs:
+docker_baseline_auditor.x_dockerd_args__mutmut_31 # decode("utf-8") -> decode("UTF-8"): Python normalises codec names, both are the same codec, so every byte string decodes identically
+docker_baseline_auditor.x_local_socket_path__mutmut_5 # os.environ.get("DOCKER_HOST", ) has default None instead of "": unset gives None, and `not host` is true for both None and "", same return path
+docker_baseline_auditor.x_audit_container__mutmut_213 # (m.get("Propagation") or "") -> or "XXXX": the value is only tested for membership in ("shared", "rshared"), and neither "" nor "XXXX" is a member
+docker_baseline_auditor.x_audit_container__mutmut_576 # image.rsplit("/", 1)[-1] -> rsplit("/", 2)[-1]: [-1] is the text after the LAST "/" for any maxsplit >= 1, so the result is identical
+
